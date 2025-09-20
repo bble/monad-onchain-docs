@@ -723,23 +723,28 @@ async function handleInsertion(diff) {
         
         // 移除分批处理逻辑
         
-        // 尝试使用原生 Web3 调用
+        // 直接使用 window.ethereum.request 绕过 Ethers.js
         console.log('尝试调用合约...');
         
-        // 使用 sendTransaction 而不是合约方法
+        // 编码函数调用数据
         const data = contract.interface.encodeFunctionData('insertText', [diff.position, diff.text]);
         console.log('编码数据:', data);
         
-        const tx = await signer.sendTransaction({
-            to: CONTRACT_ADDRESS,
-            data: data,
-            gasLimit: 200000
+        // 直接使用 MetaMask 的 eth_sendTransaction
+        const txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+                from: userAddress,
+                to: CONTRACT_ADDRESS,
+                data: data
+            }]
         });
         
-        console.log('交易已发送:', tx.hash);
+        console.log('交易已发送:', txHash);
         updateStatus('等待交易确认...', 'loading');
         
-        const receipt = await tx.wait();
+        // 等待交易确认
+        const receipt = await provider.waitForTransaction(txHash);
         console.log('交易确认:', receipt);
         
         // 更新本地状态
@@ -784,20 +789,23 @@ async function handleDeletion(diff) {
             length: diff.length
         });
         
-        // 使用原生 Web3 调用
+        // 直接使用 window.ethereum.request 绕过 Ethers.js
         const data = contract.interface.encodeFunctionData('deleteText', [diff.position, diff.length]);
         console.log('编码数据:', data);
         
-        const tx = await signer.sendTransaction({
-            to: CONTRACT_ADDRESS,
-            data: data,
-            gasLimit: 200000
+        const txHash = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+                from: userAddress,
+                to: CONTRACT_ADDRESS,
+                data: data
+            }]
         });
         
-        console.log('交易已发送:', tx.hash);
+        console.log('交易已发送:', txHash);
         updateStatus('等待交易确认...', 'loading');
         
-        const receipt = await tx.wait();
+        const receipt = await provider.waitForTransaction(txHash);
         console.log('交易确认:', receipt);
         
         // 更新本地状态
