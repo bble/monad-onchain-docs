@@ -475,10 +475,24 @@ async function handleInsertion(diff) {
     try {
         updateStatus('发送插入交易...', 'loading');
         
-        const tx = await contract.insertText(diff.position, diff.text);
+        // 添加交易参数优化
+        const txOptions = {
+            gasLimit: 100000, // 设置 gas 限制
+            gasPrice: ethers.utils.parseUnits('1', 'gwei') // 设置较低的 gas 价格
+        };
+        
+        console.log('发送插入交易，参数:', {
+            position: diff.position,
+            text: diff.text,
+            options: txOptions
+        });
+        
+        const tx = await contract.insertText(diff.position, diff.text, txOptions);
+        console.log('交易已发送:', tx.hash);
         updateStatus('等待交易确认...', 'loading');
         
-        await tx.wait();
+        const receipt = await tx.wait();
+        console.log('交易确认:', receipt);
         
         // 更新本地状态
         docState = docState.slice(0, diff.position) + diff.text + docState.slice(diff.position);
@@ -487,7 +501,22 @@ async function handleInsertion(diff) {
         
     } catch (error) {
         console.error('插入操作失败:', error);
-        updateStatus('插入失败: ' + error.message, 'error');
+        console.error('错误详情:', {
+            message: error.message,
+            code: error.code,
+            reason: error.reason,
+            data: error.data
+        });
+        
+        // 提供更友好的错误信息
+        let errorMessage = '插入失败: ' + error.message;
+        if (error.code === -32603) {
+            errorMessage = '交易失败，请检查网络连接或稍后重试';
+        } else if (error.message.includes('insufficient funds')) {
+            errorMessage = '余额不足，请确保钱包中有足够的 MON 代币';
+        }
+        
+        updateStatus(errorMessage, 'error');
         
         // 恢复编辑器状态
         editor.value = docState;
@@ -501,10 +530,24 @@ async function handleDeletion(diff) {
     try {
         updateStatus('发送删除交易...', 'loading');
         
-        const tx = await contract.deleteText(diff.position, diff.length);
+        // 添加交易参数优化
+        const txOptions = {
+            gasLimit: 100000, // 设置 gas 限制
+            gasPrice: ethers.utils.parseUnits('1', 'gwei') // 设置较低的 gas 价格
+        };
+        
+        console.log('发送删除交易，参数:', {
+            position: diff.position,
+            length: diff.length,
+            options: txOptions
+        });
+        
+        const tx = await contract.deleteText(diff.position, diff.length, txOptions);
+        console.log('交易已发送:', tx.hash);
         updateStatus('等待交易确认...', 'loading');
         
-        await tx.wait();
+        const receipt = await tx.wait();
+        console.log('交易确认:', receipt);
         
         // 更新本地状态
         docState = docState.slice(0, diff.position) + docState.slice(diff.position + diff.length);
@@ -513,7 +556,22 @@ async function handleDeletion(diff) {
         
     } catch (error) {
         console.error('删除操作失败:', error);
-        updateStatus('删除失败: ' + error.message, 'error');
+        console.error('错误详情:', {
+            message: error.message,
+            code: error.code,
+            reason: error.reason,
+            data: error.data
+        });
+        
+        // 提供更友好的错误信息
+        let errorMessage = '删除失败: ' + error.message;
+        if (error.code === -32603) {
+            errorMessage = '交易失败，请检查网络连接或稍后重试';
+        } else if (error.message.includes('insufficient funds')) {
+            errorMessage = '余额不足，请确保钱包中有足够的 MON 代币';
+        }
+        
+        updateStatus(errorMessage, 'error');
         
         // 恢复编辑器状态
         editor.value = docState;
