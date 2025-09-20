@@ -587,18 +587,29 @@ async function handleInsertion(diff) {
     try {
         updateStatus('发送插入交易...', 'loading');
         
-        // 简化交易参数，让 MetaMask 自动处理 gas
-        const txOptions = {
-            gasLimit: 200000 // 只设置 gas 限制
-        };
-        
+        // 让 MetaMask 完全自动处理 gas 设置
         console.log('发送插入交易，参数:', {
             position: diff.position,
-            text: diff.text,
-            options: txOptions
+            text: diff.text
         });
         
-        const tx = await contract.insertText(diff.position, diff.text, { gasLimit: txOptions.gasLimit });
+        console.log('准备调用合约 insertText 函数...');
+        console.log('合约地址:', contract.address);
+        console.log('函数参数:', diff.position, diff.text);
+        
+        // 先测试合约连接
+        try {
+            const code = await provider.getCode(contract.address);
+            console.log('合约代码长度:', code.length);
+            if (code === '0x') {
+                throw new Error('合约地址无效或未部署');
+            }
+        } catch (error) {
+            console.error('合约验证失败:', error);
+            throw error;
+        }
+        
+        const tx = await contract.insertText(diff.position, diff.text);
         console.log('交易已发送:', tx.hash);
         updateStatus('等待交易确认...', 'loading');
         
@@ -641,18 +652,13 @@ async function handleDeletion(diff) {
     try {
         updateStatus('发送删除交易...', 'loading');
         
-        // 简化交易参数，让 MetaMask 自动处理 gas
-        const txOptions = {
-            gasLimit: 200000 // 只设置 gas 限制
-        };
-        
+        // 让 MetaMask 完全自动处理 gas 设置
         console.log('发送删除交易，参数:', {
             position: diff.position,
-            length: diff.length,
-            options: txOptions
+            length: diff.length
         });
         
-        const tx = await contract.deleteText(diff.position, diff.length, { gasLimit: txOptions.gasLimit });
+        const tx = await contract.deleteText(diff.position, diff.length);
         console.log('交易已发送:', tx.hash);
         updateStatus('等待交易确认...', 'loading');
         
