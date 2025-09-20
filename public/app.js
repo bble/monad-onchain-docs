@@ -370,6 +370,9 @@ async function initializeDocument() {
         // 开始监听实时更新
         listenForLiveUpdates();
         
+        // 添加测试按钮（临时）
+        addTestButton();
+        
     } catch (error) {
         console.error('文档初始化失败:', error);
         console.error('错误详情:', {
@@ -413,7 +416,12 @@ function applyEvent(document, event) {
  * 监听实时更新
  */
 function listenForLiveUpdates() {
-    if (!contract) return;
+    if (!contract) {
+        console.log('合约未初始化，无法监听事件');
+        return;
+    }
+    
+    console.log('开始监听实时更新...');
     
     // 监听文本插入事件
     contract.on('TextInserted', async (author, position, text, event) => {
@@ -682,6 +690,44 @@ async function testNetworkConnection() {
         console.error('网络连接测试失败:', error);
         return false;
     }
+}
+
+/**
+ * 添加测试按钮（临时调试用）
+ */
+function addTestButton() {
+    // 检查是否已经添加了测试按钮
+    if (document.getElementById('testButton')) return;
+    
+    const testButton = document.createElement('button');
+    testButton.id = 'testButton';
+    testButton.textContent = '测试事件监听';
+    testButton.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+    `;
+    
+    testButton.onclick = async () => {
+        try {
+            console.log('测试事件监听...');
+            const tx = await contract.insertText(0, '测试文本 ' + Date.now());
+            console.log('测试交易已发送:', tx.hash);
+            updateStatus('测试交易已发送，请检查控制台', 'success');
+        } catch (error) {
+            console.error('测试失败:', error);
+            updateStatus('测试失败: ' + error.message, 'error');
+        }
+    };
+    
+    document.body.appendChild(testButton);
 }
 
 /**
