@@ -34,6 +34,15 @@ const status = document.getElementById('status');
 window.addEventListener('load', function() {
     console.log('页面加载完成，初始化应用...');
     
+    // 检查 Ethers.js 是否加载
+    if (typeof ethers === 'undefined') {
+        console.error('Ethers.js 库未正确加载，请检查网络连接或 CDN 状态');
+        updateStatus('Ethers.js 库加载失败，请刷新页面重试', 'error');
+        return;
+    }
+    
+    console.log('Ethers.js 库加载成功，版本:', ethers.version);
+    
     // 绑定事件监听器
     connectButton.addEventListener('click', connectWallet);
     editor.addEventListener('input', handleTextInput);

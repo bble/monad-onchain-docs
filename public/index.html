@@ -253,7 +253,13 @@
     </div>
 
     <!-- 导入 Ethers.js 库 -->
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <!-- 备用 CDN -->
+    <script>
+        if (typeof ethers === 'undefined') {
+            document.write('<script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"><\/script>');
+        }
+    </script>
     
     <!-- 导入应用逻辑 -->
     <script src="app.js"></script>
