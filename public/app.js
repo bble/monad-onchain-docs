@@ -423,6 +423,10 @@ function listenForLiveUpdates() {
     
     console.log('开始监听实时更新...');
     
+    // 先移除之前的事件监听器，避免重复绑定
+    contract.removeAllListeners('TextInserted');
+    contract.removeAllListeners('TextDeleted');
+    
     // 监听文本插入事件
     contract.on('TextInserted', async (author, position, text, event) => {
         try {
@@ -528,11 +532,13 @@ async function handleTextInput(event) {
         clearTimeout(debounceTimer);
     }
     
-    // 将更改添加到待处理列表
+    // 恢复防抖机制，避免单个字符发送交易
+    if (debounceTimer) clearTimeout(debounceTimer);
     pendingChanges.push(diff);
-    
-    // 暂时禁用防抖，直接处理
-    await processPendingChanges();
+
+    debounceTimer = setTimeout(async () => {
+        await processPendingChanges();
+    }, 1000); // 1秒防抖，让用户完成输入
 }
 
 /**
@@ -726,6 +732,30 @@ function addTestButton() {
             updateStatus('测试失败: ' + error.message, 'error');
         }
     };
+    
+    // 添加重新监听按钮
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = '重新监听';
+    refreshButton.style.cssText = `
+        position: fixed;
+        top: 50px;
+        right: 10px;
+        z-index: 1000;
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+    `;
+    
+    refreshButton.onclick = () => {
+        console.log('重新启动事件监听...');
+        listenForLiveUpdates();
+        updateStatus('事件监听已重新启动', 'success');
+    };
+    
+    document.body.appendChild(refreshButton);
     
     document.body.appendChild(testButton);
 }
