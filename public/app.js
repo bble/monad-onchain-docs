@@ -598,34 +598,12 @@ async function handleInsertion(diff) {
             options: txOptions
         });
         
-        // 尝试发送交易，最多重试 3 次
-        let tx, receipt;
-        let retryCount = 0;
-        const maxRetries = 3;
+        const tx = await contract.insertText(diff.position, diff.text, { gasLimit: txOptions.gasLimit });
+        console.log('交易已发送:', tx.hash);
+        updateStatus('等待交易确认...', 'loading');
         
-        while (retryCount < maxRetries) {
-            try {
-                console.log(`尝试发送交易 (第 ${retryCount + 1} 次)...`);
-                tx = await contract.insertText(diff.position, diff.text, txOptions);
-                console.log('交易已发送:', tx.hash);
-                updateStatus('等待交易确认...', 'loading');
-                
-                receipt = await tx.wait();
-                console.log('交易确认:', receipt);
-                break; // 成功，跳出循环
-                
-            } catch (error) {
-                retryCount++;
-                console.warn(`交易失败 (第 ${retryCount} 次):`, error.message);
-                
-                if (retryCount >= maxRetries) {
-                    throw error; // 重试次数用完，抛出错误
-                }
-                
-                // 等待 2 秒后重试
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-        }
+        const receipt = await tx.wait();
+        console.log('交易确认:', receipt);
         
         // 更新本地状态
         docState = docState.slice(0, diff.position) + diff.text + docState.slice(diff.position);
@@ -674,34 +652,12 @@ async function handleDeletion(diff) {
             options: txOptions
         });
         
-        // 尝试发送交易，最多重试 3 次
-        let tx, receipt;
-        let retryCount = 0;
-        const maxRetries = 3;
+        const tx = await contract.deleteText(diff.position, diff.length, { gasLimit: txOptions.gasLimit });
+        console.log('交易已发送:', tx.hash);
+        updateStatus('等待交易确认...', 'loading');
         
-        while (retryCount < maxRetries) {
-            try {
-                console.log(`尝试发送交易 (第 ${retryCount + 1} 次)...`);
-                tx = await contract.deleteText(diff.position, diff.length, txOptions);
-                console.log('交易已发送:', tx.hash);
-                updateStatus('等待交易确认...', 'loading');
-                
-                receipt = await tx.wait();
-                console.log('交易确认:', receipt);
-                break; // 成功，跳出循环
-                
-            } catch (error) {
-                retryCount++;
-                console.warn(`交易失败 (第 ${retryCount} 次):`, error.message);
-                
-                if (retryCount >= maxRetries) {
-                    throw error; // 重试次数用完，抛出错误
-                }
-                
-                // 等待 2 秒后重试
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
-        }
+        const receipt = await tx.wait();
+        console.log('交易确认:', receipt);
         
         // 更新本地状态
         docState = docState.slice(0, diff.position) + docState.slice(diff.position + diff.length);
