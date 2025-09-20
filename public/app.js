@@ -4,7 +4,7 @@
 console.log('On-Chain Collaborative Editor loaded successfully!');
 
 // 配置常量
-const CONTRACT_ADDRESS = "YOUR_DEPLOYED_CONTRACT_ADDRESS"; // 部署后需要更新
+const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // 本地部署的合约地址
 const CONTRACT_ABI = [
     // 事件定义
     "event TextInserted(address indexed author, uint256 position, string text)",
