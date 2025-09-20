@@ -6,13 +6,46 @@ console.log('On-Chain Collaborative Editor loaded successfully!');
 // 配置常量
 const CONTRACT_ADDRESS = "0x63c23F3c18F220B39788f2CD8CF9978e7bc375eA"; // Monad 测试网部署的合约地址
 const CONTRACT_ABI = [
-    // 事件定义
-    "event TextInserted(address indexed author, uint256 position, string text)",
-    "event TextDeleted(address indexed author, uint256 position, uint256 length)",
-    
-    // 函数定义
-    "function insertText(uint256 _position, string memory _text) public",
-    "function deleteText(uint256 _position, uint256 _length) public"
+    {
+        "anonymous": false,
+        "inputs": [
+            {"indexed": true, "internalType": "address", "name": "author", "type": "address"},
+            {"indexed": false, "internalType": "uint256", "name": "position", "type": "uint256"},
+            {"indexed": false, "internalType": "string", "name": "text", "type": "string"}
+        ],
+        "name": "TextInserted",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {"indexed": true, "internalType": "address", "name": "author", "type": "address"},
+            {"indexed": false, "internalType": "uint256", "name": "position", "type": "uint256"},
+            {"indexed": false, "internalType": "uint256", "name": "length", "type": "uint256"}
+        ],
+        "name": "TextDeleted",
+        "type": "event"
+    },
+    {
+        "inputs": [
+            {"internalType": "uint256", "name": "_position", "type": "uint256"},
+            {"internalType": "string", "name": "_text", "type": "string"}
+        ],
+        "name": "insertText",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {"internalType": "uint256", "name": "_position", "type": "uint256"},
+            {"internalType": "uint256", "name": "_length", "type": "uint256"}
+        ],
+        "name": "deleteText",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
 ];
 
 // 全局变量
@@ -690,6 +723,8 @@ async function handleInsertion(diff) {
         
         // 移除分批处理逻辑
         
+        // 尝试使用更简单的调用方式
+        console.log('尝试调用合约...');
         const tx = await contract.insertText(diff.position, diff.text);
         console.log('交易已发送:', tx.hash);
         updateStatus('等待交易确认...', 'loading');
