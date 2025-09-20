@@ -23,8 +23,14 @@ let userAddress;
 let docState = ""; // 本地文档状态
 let isApplyingRemoteChange = false; // 防止事件循环的标志
 
+// 防抖相关变量
+let debounceTimer = null;
+let pendingChanges = []; // 待处理的更改
+let isProcessingChanges = false; // 是否正在处理更改
+
 // DOM 元素引用
 const connectButton = document.getElementById('connectButton');
+const saveButton = document.getElementById('saveButton');
 const walletStatus = document.getElementById('walletStatus');
 const walletAddress = document.getElementById('walletAddress');
 const editor = document.getElementById('editor');
@@ -45,6 +51,12 @@ window.addEventListener('load', function() {
     
     // 绑定事件监听器
     connectButton.addEventListener('click', connectWallet);
+    saveButton.addEventListener('click', () => {
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+            processPendingChanges();
+        }
+    });
     editor.addEventListener('input', handleTextInput);
     
     // 检查是否已连接钱包
@@ -185,6 +197,7 @@ function updateWalletUI(address) {
     walletAddress.textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
     connectButton.textContent = '断开连接';
     connectButton.onclick = disconnectWallet;
+    saveButton.style.display = 'inline-block';
 }
 
 /**
@@ -195,10 +208,19 @@ async function disconnectWallet() {
     walletAddress.textContent = '请连接您的 MetaMask 钱包';
     connectButton.textContent = '连接钱包';
     connectButton.onclick = connectWallet;
+    saveButton.style.display = 'none';
     
     editor.disabled = true;
     editor.value = '';
     docState = '';
+    
+    // 清除防抖定时器
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+    }
+    pendingChanges = [];
+    isProcessingChanges = false;
     
     // 移除事件监听器
     if (contract) {
@@ -409,22 +431,79 @@ async function handleTextInput(event) {
         return;
     }
     
+    // 如果正在处理更改，忽略新的输入
+    if (isProcessingChanges) {
+        return;
+    }
+    
+    const newValue = event.target.value;
+    const oldValue = docState;
+    
+    // 计算差异
+    const diff = calculateDiff(oldValue, newValue);
+    
+    if (diff.type === 'none') {
+        return; // 没有变化
+    }
+    
+    // 清除之前的防抖定时器
+    if (debounceTimer) {
+        clearTimeout(debounceTimer);
+    }
+    
+    // 将更改添加到待处理列表
+    pendingChanges.push(diff);
+    
+    // 设置防抖定时器，500ms 后处理所有待处理的更改
+    debounceTimer = setTimeout(async () => {
+        await processPendingChanges();
+    }, 500);
+}
+
+/**
+ * 处理所有待处理的更改
+ */
+async function processPendingChanges() {
+    if (pendingChanges.length === 0 || isProcessingChanges) {
+        return;
+    }
+    
+    isProcessingChanges = true;
+    updateStatus('处理编辑更改...', 'loading');
+    
     try {
-        const newValue = event.target.value;
-        const oldValue = docState;
+        console.log('处理待处理的更改:', pendingChanges.length, '个');
         
-        // 计算差异
-        const diff = calculateDiff(oldValue, newValue);
-        
-        if (diff.type === 'insert') {
-            await handleInsertion(diff);
-        } else if (diff.type === 'delete') {
-            await handleDeletion(diff);
+        // 合并所有更改为一个最终状态
+        let finalText = docState;
+        for (const change of pendingChanges) {
+            if (change.type === 'insert') {
+                finalText = finalText.slice(0, change.position) + change.text + finalText.slice(change.position);
+            } else if (change.type === 'delete') {
+                finalText = finalText.slice(0, change.position) + finalText.slice(change.position + change.length);
+            }
         }
         
+        // 计算最终差异（从原始状态到最终状态）
+        const finalDiff = calculateDiff(docState, finalText);
+        
+        if (finalDiff.type === 'insert') {
+            await handleInsertion(finalDiff);
+        } else if (finalDiff.type === 'delete') {
+            await handleDeletion(finalDiff);
+        }
+        
+        // 清空待处理列表
+        pendingChanges = [];
+        
     } catch (error) {
-        console.error('处理文本输入失败:', error);
+        console.error('处理待处理更改失败:', error);
         updateStatus('处理编辑失败: ' + error.message, 'error');
+        
+        // 恢复编辑器状态
+        editor.value = docState;
+    } finally {
+        isProcessingChanges = false;
     }
 }
 
