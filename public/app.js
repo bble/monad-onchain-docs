@@ -723,9 +723,19 @@ async function handleInsertion(diff) {
         
         // 移除分批处理逻辑
         
-        // 尝试使用更简单的调用方式
+        // 尝试使用原生 Web3 调用
         console.log('尝试调用合约...');
-        const tx = await contract.insertText(diff.position, diff.text);
+        
+        // 使用 sendTransaction 而不是合约方法
+        const data = contract.interface.encodeFunctionData('insertText', [diff.position, diff.text]);
+        console.log('编码数据:', data);
+        
+        const tx = await signer.sendTransaction({
+            to: CONTRACT_ADDRESS,
+            data: data,
+            gasLimit: 200000
+        });
+        
         console.log('交易已发送:', tx.hash);
         updateStatus('等待交易确认...', 'loading');
         
@@ -774,7 +784,16 @@ async function handleDeletion(diff) {
             length: diff.length
         });
         
-        const tx = await contract.deleteText(diff.position, diff.length);
+        // 使用原生 Web3 调用
+        const data = contract.interface.encodeFunctionData('deleteText', [diff.position, diff.length]);
+        console.log('编码数据:', data);
+        
+        const tx = await signer.sendTransaction({
+            to: CONTRACT_ADDRESS,
+            data: data,
+            gasLimit: 200000
+        });
+        
         console.log('交易已发送:', tx.hash);
         updateStatus('等待交易确认...', 'loading');
         
