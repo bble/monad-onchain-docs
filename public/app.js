@@ -581,6 +581,46 @@ function calculateDiff(oldText, newText) {
 }
 
 /**
+ * 处理长文本插入（分批处理）
+ */
+async function handleLongTextInsertion(diff) {
+    try {
+        const chunkSize = 50; // 每批50个字符
+        const text = diff.text;
+        let currentPosition = diff.position;
+        
+        updateStatus('分批处理长文本...', 'loading');
+        
+        for (let i = 0; i < text.length; i += chunkSize) {
+            const chunk = text.slice(i, i + chunkSize);
+            console.log(`处理文本块 ${Math.floor(i/chunkSize) + 1}:`, chunk);
+            
+            const tx = await contract.insertText(currentPosition, chunk);
+            console.log('块交易已发送:', tx.hash);
+            
+            const receipt = await tx.wait();
+            console.log('块交易确认:', receipt.status === 1 ? '成功' : '失败');
+            
+            // 更新位置
+            currentPosition += chunk.length;
+            
+            // 更新本地状态
+            docState = docState.slice(0, currentPosition - chunk.length) + chunk + docState.slice(currentPosition - chunk.length);
+            
+            // 短暂延迟避免网络拥堵
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        updateStatus('长文本插入完成！', 'success');
+        
+    } catch (error) {
+        console.error('长文本插入失败:', error);
+        updateStatus('长文本插入失败: ' + error.message, 'error');
+        throw error;
+    }
+}
+
+/**
  * 处理插入操作
  */
 async function handleInsertion(diff) {
@@ -596,6 +636,13 @@ async function handleInsertion(diff) {
         console.log('准备调用合约 insertText 函数...');
         console.log('合约地址:', contract.address);
         console.log('函数参数:', diff.position, diff.text);
+        console.log('文本长度:', diff.text.length);
+        console.log('文本字节长度:', new TextEncoder().encode(diff.text).length);
+        
+        // 检查文本长度限制
+        if (diff.text.length > 1000) {
+            throw new Error('文本长度超过限制（最大1000字符）');
+        }
         
         // 先测试合约连接
         try {
@@ -607,6 +654,27 @@ async function handleInsertion(diff) {
         } catch (error) {
             console.error('合约验证失败:', error);
             throw error;
+        }
+        
+        // 先尝试插入一个测试字符
+        if (diff.text.length > 10) {
+            console.log('文本较长，先测试单个字符...');
+            try {
+                const testTx = await contract.insertText(diff.position, 'a');
+                console.log('测试交易成功:', testTx.hash);
+                await testTx.wait();
+                console.log('测试交易确认成功');
+            } catch (testError) {
+                console.error('测试交易失败:', testError);
+                throw new Error('网络连接有问题，请稍后重试');
+            }
+        }
+        
+        // 尝试分批处理长文本
+        if (diff.text.length > 100) {
+            console.log('文本较长，尝试分批处理...');
+            await handleLongTextInsertion(diff);
+            return;
         }
         
         const tx = await contract.insertText(diff.position, diff.text);
