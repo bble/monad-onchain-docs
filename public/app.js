@@ -64,6 +64,33 @@ window.addEventListener('load', function() {
 });
 
 /**
+ * 检查网络健康状态
+ */
+async function checkNetworkHealth() {
+    try {
+        // 尝试获取最新的几个区块
+        const currentBlock = await provider.getBlockNumber();
+        const block1 = await provider.getBlock(currentBlock);
+        const block2 = await provider.getBlock(currentBlock - 1);
+        
+        // 检查区块时间戳是否合理
+        const timeDiff = block1.timestamp - block2.timestamp;
+        const isHealthy = timeDiff > 0 && timeDiff < 300; // 区块间隔应该在 0-300 秒之间
+        
+        console.log('网络健康检查:', {
+            currentBlock,
+            timeDiff,
+            isHealthy
+        });
+        
+        return isHealthy;
+    } catch (error) {
+        console.warn('网络健康检查失败:', error);
+        return false;
+    }
+}
+
+/**
  * 切换到 Monad 测试网
  */
 async function switchToMonadTestnet() {
@@ -172,6 +199,12 @@ async function connectWallet() {
             console.log('测试网络连接...');
             const blockNumber = await provider.getBlockNumber();
             console.log('当前区块号:', blockNumber);
+            
+            // 检查网络是否健康
+            const networkHealth = await checkNetworkHealth();
+            if (!networkHealth) {
+                console.warn('网络可能不稳定，建议稍后重试');
+            }
         } catch (networkError) {
             console.warn('网络连接测试失败:', networkError);
         }
@@ -554,10 +587,9 @@ async function handleInsertion(diff) {
     try {
         updateStatus('发送插入交易...', 'loading');
         
-        // 添加交易参数优化
+        // 简化交易参数，让 MetaMask 自动处理 gas
         const txOptions = {
-            gasLimit: 100000, // 设置 gas 限制
-            gasPrice: ethers.utils.parseUnits('1', 'gwei') // 设置较低的 gas 价格
+            gasLimit: 200000 // 只设置 gas 限制
         };
         
         console.log('发送插入交易，参数:', {
@@ -566,12 +598,34 @@ async function handleInsertion(diff) {
             options: txOptions
         });
         
-        const tx = await contract.insertText(diff.position, diff.text, txOptions);
-        console.log('交易已发送:', tx.hash);
-        updateStatus('等待交易确认...', 'loading');
+        // 尝试发送交易，最多重试 3 次
+        let tx, receipt;
+        let retryCount = 0;
+        const maxRetries = 3;
         
-        const receipt = await tx.wait();
-        console.log('交易确认:', receipt);
+        while (retryCount < maxRetries) {
+            try {
+                console.log(`尝试发送交易 (第 ${retryCount + 1} 次)...`);
+                tx = await contract.insertText(diff.position, diff.text, txOptions);
+                console.log('交易已发送:', tx.hash);
+                updateStatus('等待交易确认...', 'loading');
+                
+                receipt = await tx.wait();
+                console.log('交易确认:', receipt);
+                break; // 成功，跳出循环
+                
+            } catch (error) {
+                retryCount++;
+                console.warn(`交易失败 (第 ${retryCount} 次):`, error.message);
+                
+                if (retryCount >= maxRetries) {
+                    throw error; // 重试次数用完，抛出错误
+                }
+                
+                // 等待 2 秒后重试
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
         
         // 更新本地状态
         docState = docState.slice(0, diff.position) + diff.text + docState.slice(diff.position);
@@ -609,10 +663,9 @@ async function handleDeletion(diff) {
     try {
         updateStatus('发送删除交易...', 'loading');
         
-        // 添加交易参数优化
+        // 简化交易参数，让 MetaMask 自动处理 gas
         const txOptions = {
-            gasLimit: 100000, // 设置 gas 限制
-            gasPrice: ethers.utils.parseUnits('1', 'gwei') // 设置较低的 gas 价格
+            gasLimit: 200000 // 只设置 gas 限制
         };
         
         console.log('发送删除交易，参数:', {
@@ -621,12 +674,34 @@ async function handleDeletion(diff) {
             options: txOptions
         });
         
-        const tx = await contract.deleteText(diff.position, diff.length, txOptions);
-        console.log('交易已发送:', tx.hash);
-        updateStatus('等待交易确认...', 'loading');
+        // 尝试发送交易，最多重试 3 次
+        let tx, receipt;
+        let retryCount = 0;
+        const maxRetries = 3;
         
-        const receipt = await tx.wait();
-        console.log('交易确认:', receipt);
+        while (retryCount < maxRetries) {
+            try {
+                console.log(`尝试发送交易 (第 ${retryCount + 1} 次)...`);
+                tx = await contract.deleteText(diff.position, diff.length, txOptions);
+                console.log('交易已发送:', tx.hash);
+                updateStatus('等待交易确认...', 'loading');
+                
+                receipt = await tx.wait();
+                console.log('交易确认:', receipt);
+                break; // 成功，跳出循环
+                
+            } catch (error) {
+                retryCount++;
+                console.warn(`交易失败 (第 ${retryCount} 次):`, error.message);
+                
+                if (retryCount >= maxRetries) {
+                    throw error; // 重试次数用完，抛出错误
+                }
+                
+                // 等待 2 秒后重试
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
         
         // 更新本地状态
         docState = docState.slice(0, diff.position) + docState.slice(diff.position + diff.length);
