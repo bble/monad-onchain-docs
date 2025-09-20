@@ -59,7 +59,7 @@ async function switchToMonadTestnet() {
         // 尝试切换到 Monad 测试网
         await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0x2797' }], // 10143 的十六进制
+            params: [{ chainId: '0x279F' }], // 10143 的十六进制
         });
         console.log('已切换到 Monad 测试网');
     } catch (switchError) {
@@ -69,7 +69,7 @@ async function switchToMonadTestnet() {
                 await window.ethereum.request({
                     method: 'wallet_addEthereumChain',
                     params: [{
-                        chainId: '0x2797', // 10143 的十六进制
+                        chainId: '0x279F', // 10143 的十六进制
                         chainName: 'Monad Testnet',
                         rpcUrls: ['https://testnet-rpc.monad.xyz'],
                         nativeCurrency: {
