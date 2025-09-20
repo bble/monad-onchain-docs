@@ -155,6 +155,15 @@ async function connectWallet() {
         contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         console.log('合约初始化成功:', CONTRACT_ADDRESS);
 
+        // 测试网络连接
+        try {
+            console.log('测试网络连接...');
+            const blockNumber = await provider.getBlockNumber();
+            console.log('当前区块号:', blockNumber);
+        } catch (networkError) {
+            console.warn('网络连接测试失败:', networkError);
+        }
+
         // 更新 UI
         updateWalletUI(userAddress);
         updateStatus('钱包连接成功！', 'success');
@@ -206,14 +215,18 @@ async function initializeDocument() {
     try {
         updateStatus('重构文档...', 'loading');
         
+        console.log('开始查询历史事件...');
+        console.log('合约地址:', CONTRACT_ADDRESS);
+        console.log('当前网络:', await provider.getNetwork());
+        
         // 查询所有历史事件
         const insertFilter = contract.filters.TextInserted();
         const deleteFilter = contract.filters.TextDeleted();
         
-        const [insertEvents, deleteEvents] = await Promise.all([
-            contract.queryFilter(insertFilter, 0, 'latest'),
-            contract.queryFilter(deleteFilter, 0, 'latest')
-        ]);
+        console.log('查询插入事件...');
+        const insertEvents = await contract.queryFilter(insertFilter, 0, 'latest');
+        console.log('查询删除事件...');
+        const deleteEvents = await contract.queryFilter(deleteFilter, 0, 'latest');
         
         console.log(`找到 ${insertEvents.length} 个插入事件，${deleteEvents.length} 个删除事件`);
         
@@ -248,7 +261,23 @@ async function initializeDocument() {
         
     } catch (error) {
         console.error('文档初始化失败:', error);
-        updateStatus('文档初始化失败: ' + error.message, 'error');
+        console.error('错误详情:', {
+            message: error.message,
+            code: error.code,
+            reason: error.reason,
+            data: error.data
+        });
+        
+        // 如果是 RPC 错误，提供更友好的错误信息
+        if (error.message && error.message.includes('RPC')) {
+            updateStatus('网络连接失败，请检查网络设置或稍后重试', 'error');
+        } else {
+            updateStatus('文档初始化失败: ' + error.message, 'error');
+        }
+        
+        // 即使初始化失败，也启用编辑器让用户可以尝试编辑
+        editor.disabled = false;
+        updateStatus('编辑器已启用，您可以尝试编辑', 'success');
     }
 }
 
