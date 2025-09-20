@@ -197,8 +197,10 @@ async function connectWallet() {
         // 测试网络连接
         try {
             console.log('测试网络连接...');
-            const blockNumber = await provider.getBlockNumber();
-            console.log('当前区块号:', blockNumber);
+            const networkTest = await testNetworkConnection();
+            if (!networkTest) {
+                throw new Error('网络连接测试失败');
+            }
             
             // 检查网络是否健康
             const networkHealth = await checkNetworkHealth();
@@ -207,6 +209,7 @@ async function connectWallet() {
             }
         } catch (networkError) {
             console.warn('网络连接测试失败:', networkError);
+            throw new Error('网络连接失败，请检查网络设置');
         }
 
         // 更新 UI
@@ -621,6 +624,36 @@ async function handleLongTextInsertion(diff) {
 }
 
 /**
+ * 测试网络连接和 RPC 状态
+ */
+async function testNetworkConnection() {
+    try {
+        console.log('测试网络连接...');
+        
+        // 测试基本连接
+        const blockNumber = await provider.getBlockNumber();
+        console.log('当前区块号:', blockNumber);
+        
+        // 测试 gas 价格
+        const gasPrice = await provider.getGasPrice();
+        console.log('当前 gas 价格:', gasPrice.toString());
+        
+        // 测试账户余额
+        const balance = await provider.getBalance(userAddress);
+        console.log('账户余额:', balance.toString());
+        
+        // 测试网络 ID
+        const network = await provider.getNetwork();
+        console.log('网络信息:', network);
+        
+        return true;
+    } catch (error) {
+        console.error('网络连接测试失败:', error);
+        return false;
+    }
+}
+
+/**
  * 处理插入操作
  */
 async function handleInsertion(diff) {
@@ -639,10 +672,7 @@ async function handleInsertion(diff) {
         console.log('文本长度:', diff.text.length);
         console.log('文本字节长度:', new TextEncoder().encode(diff.text).length);
         
-        // 检查文本长度限制
-        if (diff.text.length > 1000) {
-            throw new Error('文本长度超过限制（最大1000字符）');
-        }
+        // 移除文本长度限制
         
         // 先测试合约连接
         try {
@@ -656,26 +686,9 @@ async function handleInsertion(diff) {
             throw error;
         }
         
-        // 先尝试插入一个测试字符
-        if (diff.text.length > 10) {
-            console.log('文本较长，先测试单个字符...');
-            try {
-                const testTx = await contract.insertText(diff.position, 'a');
-                console.log('测试交易成功:', testTx.hash);
-                await testTx.wait();
-                console.log('测试交易确认成功');
-            } catch (testError) {
-                console.error('测试交易失败:', testError);
-                throw new Error('网络连接有问题，请稍后重试');
-            }
-        }
+        // 移除测试交易逻辑
         
-        // 尝试分批处理长文本
-        if (diff.text.length > 100) {
-            console.log('文本较长，尝试分批处理...');
-            await handleLongTextInsertion(diff);
-            return;
-        }
+        // 移除分批处理逻辑
         
         const tx = await contract.insertText(diff.position, diff.text);
         console.log('交易已发送:', tx.hash);
