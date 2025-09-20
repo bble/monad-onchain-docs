@@ -52,6 +52,47 @@ window.addEventListener('load', function() {
 });
 
 /**
+ * 切换到 Monad 测试网
+ */
+async function switchToMonadTestnet() {
+    try {
+        // 尝试切换到 Monad 测试网
+        await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x2797' }], // 10143 的十六进制
+        });
+        console.log('已切换到 Monad 测试网');
+    } catch (switchError) {
+        // 如果网络不存在，尝试添加网络
+        if (switchError.code === 4902) {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: '0x2797', // 10143 的十六进制
+                        chainName: 'Monad Testnet',
+                        rpcUrls: ['https://testnet-rpc.monad.xyz'],
+                        nativeCurrency: {
+                            name: 'MON',
+                            symbol: 'MON',
+                            decimals: 18
+                        },
+                        blockExplorerUrls: ['https://testnet-explorer.monad.xyz']
+                    }]
+                });
+                console.log('已添加并切换到 Monad 测试网');
+            } catch (addError) {
+                console.error('添加 Monad 测试网失败:', addError);
+                throw new Error('请手动添加 Monad 测试网到 MetaMask');
+            }
+        } else {
+            console.error('切换网络失败:', switchError);
+            throw new Error('请手动切换到 Monad 测试网');
+        }
+    }
+}
+
+/**
  * 检查钱包连接状态
  */
 async function checkWalletConnection() {
@@ -96,6 +137,14 @@ async function connectWallet() {
         // 获取网络信息
         const network = await provider.getNetwork();
         console.log('当前网络:', network);
+
+        // 检查是否在正确的网络
+        if (network.chainId !== 10143) {
+            console.log('当前不在 Monad 测试网，尝试切换到 Monad 测试网...');
+            updateStatus('正在切换到 Monad 测试网...', 'loading');
+            await switchToMonadTestnet();
+            updateStatus('已切换到 Monad 测试网', 'success');
+        }
 
         // 检查合约地址是否已配置
         if (CONTRACT_ADDRESS === "YOUR_DEPLOYED_CONTRACT_ADDRESS") {
