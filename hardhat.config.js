@@ -1,7 +1,7 @@
-import "@nomicfoundation/hardhat-toolbox";
+require("@nomicfoundation/hardhat-toolbox");
 
 /** @type import('hardhat/config').HardhatUserConfig */
-export default {
+module.exports = {
   // Solidity 编译器配置
   solidity: {
     version: "0.8.24", // 指定 Solidity 编译器版本
