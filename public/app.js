@@ -523,10 +523,8 @@ async function handleTextInput(event) {
     // 将更改添加到待处理列表
     pendingChanges.push(diff);
     
-    // 设置防抖定时器，500ms 后处理所有待处理的更改
-    debounceTimer = setTimeout(async () => {
-        await processPendingChanges();
-    }, 500);
+    // 暂时禁用防抖，直接处理
+    await processPendingChanges();
 }
 
 /**
@@ -723,29 +721,20 @@ async function handleInsertion(diff) {
         
         // 移除分批处理逻辑
         
-        // 直接使用 window.ethereum.request 绕过 Ethers.js
+        // 最简单的调用方式
         console.log('尝试调用合约...');
         
-        // 编码函数调用数据
-        const data = contract.interface.encodeFunctionData('insertText', [diff.position, diff.text]);
-        console.log('编码数据:', data);
-        
-        // 直接使用 MetaMask 的 eth_sendTransaction
-        const txHash = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [{
-                from: userAddress,
-                to: CONTRACT_ADDRESS,
-                data: data
-            }]
-        });
-        
-        console.log('交易已发送:', txHash);
-        updateStatus('等待交易确认...', 'loading');
-        
-        // 等待交易确认
-        const receipt = await provider.waitForTransaction(txHash);
-        console.log('交易确认:', receipt);
+        try {
+            const tx = await contract.insertText(diff.position, diff.text);
+            console.log('交易已发送:', tx.hash);
+            updateStatus('等待交易确认...', 'loading');
+            
+            const receipt = await tx.wait();
+            console.log('交易确认:', receipt);
+        } catch (error) {
+            console.error('合约调用失败:', error);
+            throw error;
+        }
         
         // 更新本地状态
         docState = docState.slice(0, diff.position) + diff.text + docState.slice(diff.position);
@@ -789,24 +778,18 @@ async function handleDeletion(diff) {
             length: diff.length
         });
         
-        // 直接使用 window.ethereum.request 绕过 Ethers.js
-        const data = contract.interface.encodeFunctionData('deleteText', [diff.position, diff.length]);
-        console.log('编码数据:', data);
-        
-        const txHash = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [{
-                from: userAddress,
-                to: CONTRACT_ADDRESS,
-                data: data
-            }]
-        });
-        
-        console.log('交易已发送:', txHash);
-        updateStatus('等待交易确认...', 'loading');
-        
-        const receipt = await provider.waitForTransaction(txHash);
-        console.log('交易确认:', receipt);
+        // 最简单的调用方式
+        try {
+            const tx = await contract.deleteText(diff.position, diff.length);
+            console.log('交易已发送:', tx.hash);
+            updateStatus('等待交易确认...', 'loading');
+            
+            const receipt = await tx.wait();
+            console.log('交易确认:', receipt);
+        } catch (error) {
+            console.error('合约调用失败:', error);
+            throw error;
+        }
         
         // 更新本地状态
         docState = docState.slice(0, diff.position) + docState.slice(diff.position + diff.length);
