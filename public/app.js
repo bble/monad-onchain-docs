@@ -223,10 +223,30 @@ async function initializeDocument() {
         const insertFilter = contract.filters.TextInserted();
         const deleteFilter = contract.filters.TextDeleted();
         
+        // 获取当前区块号，只查询最近的一些区块
+        const currentBlock = await provider.getBlockNumber();
+        console.log('当前区块号:', currentBlock);
+        
+        // 只查询最近 100 个区块，避免查询范围过大
+        const fromBlock = Math.max(0, currentBlock - 100);
+        console.log('查询范围:', fromBlock, '到', currentBlock);
+        
         console.log('查询插入事件...');
-        const insertEvents = await contract.queryFilter(insertFilter, 0, 'latest');
-        console.log('查询删除事件...');
-        const deleteEvents = await contract.queryFilter(deleteFilter, 0, 'latest');
+        let insertEvents, deleteEvents;
+        
+        try {
+            insertEvents = await contract.queryFilter(insertFilter, fromBlock, currentBlock);
+            console.log('查询删除事件...');
+            deleteEvents = await contract.queryFilter(deleteFilter, fromBlock, currentBlock);
+        } catch (queryError) {
+            console.warn('查询失败，尝试更小的范围...', queryError);
+            // 如果查询失败，尝试只查询最近 10 个区块
+            const smallFromBlock = Math.max(0, currentBlock - 10);
+            console.log('尝试查询范围:', smallFromBlock, '到', currentBlock);
+            
+            insertEvents = await contract.queryFilter(insertFilter, smallFromBlock, currentBlock);
+            deleteEvents = await contract.queryFilter(deleteFilter, smallFromBlock, currentBlock);
+        }
         
         console.log(`找到 ${insertEvents.length} 个插入事件，${deleteEvents.length} 个删除事件`);
         
